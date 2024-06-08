@@ -1,0 +1,27 @@
+# JetBrains IDE
+.idea/
+
+# Jupiter notebooks
+.ipynb_checkpoints/
+
+# Python cache files
+__pycache__/
+
+# mypy
+.mypy_cache/
+
+docs/et-book/
+data/
+
+node_modules/
+venv/
+
+package*.json
+yarn.lock
+
+*.duckdb
+*.ipynb
+
+# TernJS port file
+.tern-port
+.DS_Store
