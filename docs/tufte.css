@@ -222,6 +222,7 @@ code, .code { font-family: Consolas, "Liberation Mono", Menlo, Courier, monospac
             }
 
 pre > code.hljs {
+    overflow-wrap: break-word;
     background: hsl(0deg 0% 97%);
     padding: 30px
      
@@ -257,4 +258,7 @@ th { border-bottom: 2px solid #cccccc;
      padding: 0.4em 0.8em; }
 
 td { padding: 0.4em 0.8em; }
-<
+
+.katex > .katex-html {
+	white-space: normal;
+}
