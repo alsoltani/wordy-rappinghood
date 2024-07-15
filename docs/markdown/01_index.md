@@ -1,8 +1,11 @@
 <div style="text-align: center">
 
 <h1> Wordy Rappinghood </h1>
-<p>An exploration of LLMs for vector search on music metadata.</p>
+<p>An exploration of modern machine learning techniques on music metadata.</p>
 <p><i>Alain-Parviz Soltani</i></p>
+
+<div style="color: grey"><i>Code for this article is available <a href="https://github.com/alsoltani/wordy-rappinghood" target="_blank">here</a>.</i></div>
+
 <img src="docs/images/clare_dudeney_lost_words.jpeg" alt="Clare Dudeney, Lost Words, 2023" width=80%/>
 
 <em style="color: grey"><caption>Clare Dudeney, Lost Words, 2023</caption></em>
@@ -13,7 +16,7 @@ d'esprit"*.
 
 Those prescient words about large language models' achievements are not the result of a savvy and
 thorough technical analysis; they're taken from 1981 new-wave-hit "Wordy Rappinghood" by Tom Tom Club (founded by
-Tina Weymouth et Chris Frantz who, along with David Byrne, formed Talking Heads; I reckon that's another great tagline
+Tina Weymouth et Chris Frantz who, along with David Byrne, formed Talking Heads; another great tagline
 for LLMs —
 but I digress.)
 
@@ -42,5 +45,5 @@ By simpling glancing at the data, we can see that some text fields are sparsely 
 shouldn't be an issue with semantic search), and that some genres are decidedly more represented than others.
 
 <div style="text-align: center">
-<img src="docs/figures/descriptive_plots.png" alt="Missing values & genre frequency" width=100%/>
+<img src="docs/figures/descriptive_plots.svg" alt="Missing values & genre frequency" width=100%/>
 </div>

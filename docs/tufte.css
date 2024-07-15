@@ -34,7 +34,8 @@
 /* Tufte CSS styles */
 html { font-size: 15px; }
 
-body { width: 58rem;
+body { text-align: justify;
+       width: 58rem;
        margin-left: auto;
        margin-right: auto;
        padding: 0 2rem 8rem 2rem;
@@ -219,6 +220,10 @@ div.table-wrapper { overflow-x: scroll;
 code, .code { font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
               font-size: 1.125rem;
               line-height: 1.6;
+              background-color: hsl(0deg 0% 97%); /*rgb(240, 240, 240);*/
+              padding: .25em .35em;
+              border-radius: .35em;
+              color: rgb(236, 90, 100); /*rgb(236, 90, 90);*/ /*rgb(231, 95, 95)*/
             }
 
 pre > code.hljs {
@@ -248,12 +253,38 @@ label.margin-toggle:not(.sidenote-number) { display: none; }
 
 /* Tables */
 
-table { border-collapse: collapse;
-        font-family: "Gill Sans", "Gill Sans MT", Calibri, sans-serif;
-        font-size: 1.125rem;
-        margin: 2rem 0; }
+table {
+    /*background-color: aliceblue;*/
+    border-collapse: collapse;
+    font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    /*font-family: "Gill Sans", "Gill Sans MT", Calibri, sans-serif;*/
+    /*font-size: 1.125rem;*/
+    margin: 2rem 0;
+}
 
-th { border-bottom: 2px solid #cccccc;
+tr.even, tr.odd {
+    color: rgb(144, 146, 150);
+}
+
+tr.odd {
+    background-color: rgb(240, 247, 254); /*aliceblue;*/
+}
+
+tr.even {
+    background-color: rgb(250, 253, 255);
+}
+
+@media (prefers-color-scheme: dark) {
+tr.odd {
+    background-color: rgb(255, 232, 219);
+}
+
+tr.even {
+    background-color: rgb(255, 236, 226);
+}
+}
+
+th { /*border-bottom: 2px solid #cccccc;*/
      font-weight: normal;
      padding: 0.4em 0.8em; }
 
@@ -261,4 +292,25 @@ td { padding: 0.4em 0.8em; }
 
 .katex > .katex-html {
 	white-space: normal;
+}
+
+
+@media (prefers-color-scheme: dark) {
+  html {
+    filter: invert(100%);
+  }
+
+  img {
+    filter: invert(100%);
+  }
+
+  pre code.hljs {
+    filter: invert(100%);
+    background-color: rgb(18, 18, 18);
+  }
+
+  code.hljs {
+    color: #8a8a8a; /*#b1b1b1;*/
+  }
+
 }

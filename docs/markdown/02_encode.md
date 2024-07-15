@@ -1,9 +1,11 @@
 # Vectors floating through space
 
-> <div style="color: grey"><i>Recommended listen: [Lonnie Liston Smith – Floating Through Space (Loveland, 1978)](https://youtu.be/_kmHS-IndZw?feature=shared)</i></div>
+> <div style="color: grey"><i>Recommended listen: <a href="https://youtu.be/_kmHS-IndZw" target="_blank">Lonnie Liston Smith – Floating Through Space (Loveland, 1978)</a></i></div>
 
-The goal of vector search — as opposed to more traditional lexical search — is to compare textual objects in a larger
-dimensional space, where non-intuitive connections and similarities could be found.
+We'll start by implementing vector search; as opposed to more traditional lexical search, its goal is to compare
+textual objects in a larger
+dimensional space, where non-intuitive connections and similarities could be found. It's also at the heart of _Retrieval
+Augmented Generation (RAG)_, a popular technique to make your LLM sample conditionally to pre-existing documents.
 
 In this new space, items are represented by vectors, called *embeddings*; given a good mapping towards this
 high-dimensional space and a meaningful distance, we could find relevant objects by picking the closest neighbours to
@@ -26,19 +28,21 @@ that turn sentences into vector embeddings.
 
 `SentenceTransformers` is a great library, built on top of Hugging Face's `transformers`, that gives us access to many
 classical pre-trained models.
-In this blog post, we'll use `all-MiniLM-L6-v2`, which offers a great trade-off
-between [semantic performance and model size](https://sbert.net/docs/sentence_transformer/pretrained_models.html).
+In this blog post, we'll use `all-MiniLM-L6-v2`, a tiny model that offers a great trade-off
+between [semantic performance and size](https://sbert.net/docs/sentence_transformer/pretrained_models.html).
 
 # Loading up the data
 
-> <div style="color: grey"><i>Recommended listen: [NOW Ensemble – City Boy (Dreamfall, 2015)](https://youtu.be/_kmHS-IndZw?feature=shared)</i></div>
+> <div style="color: grey"><i>Recommended listen: <a href="https://youtu.be/9potE63cml8" target="_blank">NOW Ensemble – City Boy (Dreamfall, 2015)</a></i></div>
 
 Let's now build our vector search database.
 
-First up, we'll clean up the `tracks` data — attributing genres by joining the aforementioned table, and stripping
-unwanted HTML attributes — and we'll load it up into a database capable of performing vector search similarity (VSS).
+First up, we'll clean up the `tracks` data — attributing genres by joining the aforementioned table to it, and stripping
+unwanted HTML attributes, etc. — and we'll load it up into a database capable of performing vector search similarity (
+VSS).
 
-Some databases already offer such features (e.g. `pg_vector` for PostgreSQL), while others are being implemented (see
+Some databases already offer such features (e.g. `pg_vector` for PostgreSQL), while others are currently being
+implemented (see
 Alex
 Garcia's [wonderful SQLite extension](https://alexgarcia.xyz/blog/2024/building-new-vector-search-sqlite/index.html)).
 Here, I used DuckDB, which recently released an experimental extension aptly-named `vss`, capable of performing semantic
@@ -50,7 +54,7 @@ Speaking of optimizations, we'll try to be mindful of memory and throughput as m
 data in chunks through a generator to control memory usage, and make use of DuckDB's optimizations to preserve
 row-to-row overhead, such as reading from JSON objects.
 
-To create the vector table, the SQL initial migration looks something like this:
+To create the vector table, you'll only need the following lines:
 
 ```
 CREATE TABLE IF NOT EXISTS embeddings (
@@ -102,18 +106,17 @@ class VectorSearch:
             ...
             
             # Load these in DuckDB
-            self.client.insert_tracks(processed.reset_index())
+            self.client.insert_tracks(processed)
             self.client.insert_embeddings(embedding_frame)
 
         self.model.stop_multi_process_pool(self.pool)
-        self.client.close()
 ```
 
-To test my solution and make use of GPUs comes encoding time, I deployed a pod on [RunPod](https://www.runpod.io) (no
-affiliation to this website) with 2 x RTX
-4090 GPUs (at 0.74$/Hr, they're pretty cost-effective), 25 vCPU and 200 GB of RAM.
+To test my solution and make use of GPUs comes encoding time, I deployed a pod on [RunPod](https://www.runpod.io) with 2
+x RTX
+4090 GPUs (at $0.74/hr, they're pretty cost-effective), 25 vCPU and 200 GB of RAM.
 
-The entire process takes about 1.1 per batch of 10,000 rows, 12.2 seconds total (`UPSERT` times are of the same order of
+The entire process takes about 8.8 seconds per batch of 10,000 rows (`UPSERT` times are of the same order of
 magnitude, as we rely on DuckDB data ingestion optimizations).
 
 To put it into perspective, the CPU-only performance on a M-series MacBook Pro with 4P + 4E cores is 98.3 per batch,
@@ -131,3 +134,45 @@ def search(self, query_input: str, n_results: int = 5):
     )
     return self.client.get_nearest_tracks_info(embedding.ravel(), n_results)
 ```
+
+# Results
+
+Let's now try our search engine on a few different queries:
+
+_Japanese Funk_
+
+| ID    | Artist                    | Song                        | Genres                    |
+|-------|---------------------------|-----------------------------|---------------------------|
+| 43493 | Tsuyoshi Shimokura        | FunkOsaka                   | Funk, Chip Music, Skweee  |
+| 43492 | hally feat. Seiko Kobuchi | utabism - a synthesizer boy | Funk, Chip Music, Skweee  |
+| 43488 | Keishi Yonao              | Crush Roll                  | Funk, Chip Music, Skweee  |
+| 43495 | Utabi Hirokawa            | Stop and Go (Ubiktune edit) | Funk, Chip Music, Skweee  |
+| 34516 | Gorowski                  | Wok The Funk                | Electronic, Techno, Dance |
+
+_Classical Music_
+
+| ID    | Artist         | Song                                                               | Genres    |
+|-------|----------------|--------------------------------------------------------------------|-----------|
+| 11733 | Michael Hawley | Sonata 'Waldstein', Op. 53 - II. Introduzione-Adagio molto         | Classical |
+| 11734 | Michael Hawley | Sonata 'Waldstein', Op. 53 - III. Rondo-Allegretto moderato        | Classical |
+| 11736 | Michael Hawley | Sonata No. 21 in C Major 'Waldstein', Op. 53 - I. Allegro con brio | Classical |
+| 11738 | Free Tim       | Schubert's Ave Maria                                               | Classical |
+| 11750 | Free Tim       | Vivaldo's Spring from the Four Seasons-Allegro                     | Classical |
+
+_Avant-Gardist Research_
+
+| ID     | Artist          | Song                          | Genres                                           |
+|--------|-----------------|-------------------------------|--------------------------------------------------|
+| 138701 | Charles Premier | Gratter sa terre              | Experimental, Electroacoustic, Musique Concrete  |
+| 132461 | G.Las           | Vivaransoma                   | Field Recordings, Experimental, Sound Collage    |
+| 132469 | G.Las           | Oudienieuwe                   | Field Recordings, Experimental, Sound Collage    |
+| 47826  | Lezet           | Extended Piano Piece 2 (Folk) | Avant-Garde, Experimental, Minimalism            |
+| 13073  | Per Gardin      | Esoteric                      | Avant-Garde, Jazz, Electronic, Free-Jazz, Improv |
+
+Nice! The ability to pick up experimental cues from the last query and retrieve _musique concrète_ songs is definitely a
+nice touch, and opens up a whole new realm of possibilities for search.
+
+Of course, there are still many cases where
+lexical search is warranted — and might be the exact option the user is looking for! — so a healthy mix of lexical and
+semantic searches, with techniques such
+as [Reciprocal Rank Fusion](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf) seems the way to go.

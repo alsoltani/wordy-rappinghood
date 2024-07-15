@@ -2,7 +2,7 @@ import ast
 import logging
 import re
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import duckdb
 import numpy.typing as npt
@@ -12,8 +12,6 @@ from tqdm import tqdm
 
 CHUNK_SIZE = 10_000
 
-logging.basicConfig(level=logging.WARNING)
-
 
 class DuckDBClient:
     DATABASE_NAME = "embeddings.duckdb"
@@ -22,8 +20,9 @@ class DuckDBClient:
         self,
         embedding_size: int = 384,
         logger: logging.Logger = logging.getLogger(__name__),
+        read_only: bool = False,
     ):
-        self.connection = duckdb.connect(self.DATABASE_NAME)
+        self.connection = duckdb.connect(self.DATABASE_NAME, read_only=read_only)
         self.embedding_size = embedding_size
         self.logger = logger
         self._columns: List[str] = []
@@ -33,7 +32,7 @@ class DuckDBClient:
         """
         Get correct column order from table.
         """
-        if self._columns is None:
+        if not self._columns:
             self.connection.execute("PRAGMA table_info('tracks');")
             table_info = self.connection.fetchall()
             self._columns = [i[1] for i in table_info]
@@ -46,6 +45,7 @@ class DuckDBClient:
                 track_id INTEGER PRIMARY KEY,
                 album_engineer VARCHAR,
                 album_information VARCHAR,
+                album_listens INTEGER,
                 album_producer VARCHAR,
                 album_tags VARCHAR,
                 album_title VARCHAR,
@@ -56,13 +56,24 @@ class DuckDBClient:
                 artist_name VARCHAR,
                 artist_tags VARCHAR,
                 track_composer VARCHAR,
+                track_duration INTEGER,
                 track_genre_top VARCHAR,
                 track_genres VARCHAR,
                 track_information VARCHAR,
+                track_interest INTEGER,
+                track_listens INTEGER,
                 track_lyricist VARCHAR,
                 track_publisher VARCHAR,
                 track_tags VARCHAR,
                 track_title VARCHAR
+            );
+            """
+        )
+        self.connection.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS clusters (
+                track_id INTEGER PRIMARY KEY,
+                cluster INTEGER
             );
             """
         )
@@ -121,12 +132,32 @@ class DuckDBClient:
         )
 
         # Delete temp file
-        # temp_file = Path(temp_filepath)
-        # temp_file.unlink()
+        temp_file = Path(temp_filepath)
+        temp_file.unlink()
+
+    def insert_clusters(self, clusters: pd.DataFrame) -> None:
+        temp_filepath = "temp_clusters.json"
+        clusters[["track_id", "cluster"]].to_json(temp_filepath, orient="records")
+
+        self.connection.execute(
+            f"""
+            INSERT OR REPLACE INTO clusters
+                SELECT * FROM read_json_auto("{temp_filepath}")
+            """
+        )
+
+        self.logger.info(
+            f"Successfully inserted cluster entries: {clusters['track_id'].tolist()}.",
+            extra={"table": "clusters"},
+        )
+
+        # Delete temp file
+        temp_file = Path(temp_filepath)
+        temp_file.unlink()
 
     def insert_embeddings(self, embeddings: pd.DataFrame) -> None:
         temp_filepath = "temp_embeddings.json"
-        embeddings.to_json(temp_filepath, orient="records")
+        embeddings[["track_id", "vector"]].to_json(temp_filepath, orient="records")
 
         self.connection.execute(
             f"""
@@ -136,7 +167,7 @@ class DuckDBClient:
         )
 
         self.logger.info(
-            f"Successfully inserted track entries: {embeddings['track_id'].tolist()}.",
+            f"Successfully inserted vector entries: {embeddings['track_id'].tolist()}.",
             extra={"table": "embeddings"},
         )
 
@@ -144,8 +175,69 @@ class DuckDBClient:
         temp_file = Path(temp_filepath)
         temp_file.unlink()
 
+    def get_tracks(
+        self, n_samples: Optional[int] = None, seed: Optional[int] = None
+    ) -> pd.DataFrame:
+        statement = f"""
+            SELECT *
+            FROM tracks
+            {f"USING SAMPLE reservoir({n_samples} ROWS)" if n_samples is not None else ""}
+            {f"REPEATABLE ({seed})" if n_samples and seed else ""}
+            ;
+            """
+
+        # return pd.DataFrame(self.connection.fetchall(), columns=self.columns).
+        return self.connection.execute(statement).df().set_index("track_id")
+
+    def get_embeddings(
+        self, n_samples: Optional[int] = None, seed: Optional[int] = None
+    ) -> pd.DataFrame:
+        statement = f"""
+            SELECT *
+            FROM embeddings
+            {f"USING SAMPLE reservoir({n_samples} ROWS)" if n_samples is not None else ""}
+            {f"REPEATABLE ({seed})" if n_samples and seed else ""}
+            ;
+            """
+
+        # Explode frame column-wise
+        frame = (
+            self.connection.execute(statement)
+            .df()
+            .set_index("track_id")["vector"]
+            .apply(pd.Series)
+        )
+        columns = {c: f"embed_{c}" for c in frame.columns}
+        return frame.rename(columns=columns)
+
+    def get_numerics(
+        self, n_samples: Optional[int] = None, seed: Optional[int] = None
+    ) -> pd.DataFrame:
+        """
+        Get all numeric columns.
+        """
+        numeric_columns = self.connection.execute(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'tracks'
+              AND data_type IN ('INTEGER', 'FLOAT')
+        """
+        ).fetchall()
+
+        column_names = ", ".join([col[0] for col in numeric_columns])
+
+        statement = f"""
+            SELECT {column_names}
+            FROM tracks
+            {f"USING SAMPLE reservoir({n_samples} ROWS)" if n_samples is not None else ""}
+            {f"REPEATABLE ({seed})" if n_samples and seed else ""}
+            ;
+            """
+
+        return self.connection.execute(statement).df().set_index("track_id")
+
     def get_nearest_tracks_info(self, embedding: npt.NDArray, n_results: int = 3):
-        print(type(embedding))
         self.connection.execute(
             f"""
         SELECT track_id, artist_name, track_title, track_genres
@@ -163,6 +255,13 @@ class DuckDBClient:
 
 
 class DataProcessor:
+    NUMERICAL_COLUMNS = [
+        ("album", "listens"),
+        ("track", "duration"),
+        ("track", "interest"),
+        ("track", "listens"),
+    ]
+
     TAGS_GENRES_COLUMNS = [
         ("track", "tags"),
         ("album", "tags"),
@@ -218,9 +317,12 @@ class DataProcessor:
                         self.strip_html
                     )
 
-        # Sorting to avoid past-lex sort-depth issues
+        # Sorting to avoid past-lexsort-depth issues
         subset = chunk[
-            self.TAGS_GENRES_COLUMNS + self.CATEGORICAL_COLUMNS + self.EXTRA_COLUMNS
+            self.NUMERICAL_COLUMNS
+            + self.TAGS_GENRES_COLUMNS
+            + self.CATEGORICAL_COLUMNS
+            + self.EXTRA_COLUMNS
         ].sort_index()
 
         # Explode dataset based on genres
@@ -245,14 +347,19 @@ class DataProcessor:
     def process_genres(chunk: pd.DataFrame) -> pd.Series:
         return chunk.rename(columns={"title": "genre_title"})["genre_title"]
 
-    @staticmethod
-    def create_encoder_input(chunk: pd.DataFrame) -> pd.Series:
+    def create_encoder_input(self, chunk: pd.DataFrame) -> pd.Series:
         """
         Turn a single chunk into an embedding input.
         """
 
-        # Building embedding from concatenation of str columns
-        return chunk.fillna("").apply(lambda x: " ".join(x), axis=1)
+        # Building embedding from concatenation of textual columns
+        return (
+            chunk[
+                self.TAGS_GENRES_COLUMNS + self.CATEGORICAL_COLUMNS + self.EXTRA_COLUMNS
+            ]
+            .fillna("")
+            .apply(lambda x: " ".join(x), axis=1)
+        )
 
     @staticmethod
     def create_embedding_frame(track_ids: pd.Index, embedding_array: npt.NDArray):
@@ -272,16 +379,22 @@ class DataProcessor:
 
 
 class VectorSearch:
-    def __init__(self, model_name: str, chunksize: int = CHUNK_SIZE):
-        self.model = SentenceTransformer(model_name)
-
+    def __init__(
+        self,
+        model_name,
+        processor_list: Optional[List[str]] = None,
+        chunksize: int = CHUNK_SIZE,
+    ):
         self.client = DuckDBClient()
-        self.client.migrate()
-
         self.processor = DataProcessor()
 
+        self.model = None
+        self.pool = None
+
+        self.model = SentenceTransformer(model_name)
+
         # Automatically adjust to CPU/GPU configuration available
-        self.pool = self.model.start_multi_process_pool()
+        self.pool = self.model.start_multi_process_pool(processor_list)
 
         self.chunksize = chunksize  # Pandas chunk size
         self.model_chunksize = 50  # SentenceTransformer chunk size
@@ -315,7 +428,6 @@ class VectorSearch:
             self.client.insert_embeddings(embedding_frame)
 
         self.model.stop_multi_process_pool(self.pool)
-        self.client.close()
 
     def search(self, query_input: str, n_results: int = 5):
         """
@@ -328,5 +440,11 @@ class VectorSearch:
 
 
 if __name__ == "__main__":
-    v = VectorSearch("all-MiniLM-L6-v2", chunksize=10_000)
+    v = VectorSearch(
+        "all-MiniLM-L6-v2", processor_list=["cuda:0", "cuda:1"], chunksize=10_000
+    )
+    # v.client.migrate()
+    # v.encode_database()
+
     v.search("Funk")
+    v.client.close()

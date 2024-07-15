@@ -7,11 +7,16 @@
 # Python cache files
 __pycache__/
 
+# Loss history
+history/loss/
+
 # mypy
 .mypy_cache/
 
 docs/et-book/
 data/
+
+old/
 
 node_modules/
 venv/
