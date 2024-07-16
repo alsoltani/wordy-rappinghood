@@ -1,6 +1,6 @@
 <div style="text-align: center">
 
-<h1> Wordy Rappinghood </h1>
+<h1 style="text-align: center"> Wordy Rappinghood </h1>
 <p>An exploration of modern machine learning techniques on music metadata.</p>
 <p><i>Alain-Parviz Soltani</i></p>
 

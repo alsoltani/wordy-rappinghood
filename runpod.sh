@@ -6,3 +6,4 @@ python3 -m pip install \
     --extra-index-url=https://pypi.nvidia.com \
     cuml-cu12==24.6.*
 python3 -m ipykernel install --user --name venv
+sudo reboot

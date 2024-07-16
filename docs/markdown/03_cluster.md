@@ -159,7 +159,7 @@ This can be alleviated by preferring `leaf` to `eom` ('Excess of Mass') as a clu
 
 But from an optimization perspective, we can also add a penalization term to coerce our model into producing more homogenous clusters; we'll use an entropy-based penalty:
 
-$$l(X, k) = 1 - T(X, X_e, k) \tilde{D}(X_e, C) + \alpha (1 - S(X))$$
+$$l(X, k) = 1 - T(X, X_e, k) \tilde{D}(X_e, C) + \lambda (1 - S(X))$$
 
 where
 

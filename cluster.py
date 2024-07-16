@@ -8,18 +8,18 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import torch
-from dbcv import dbcv
 from hdbscan import HDBSCAN
 from hdbscan.prediction import all_points_membership_vectors
 from marshmallow_dataclass import class_schema
 from sklearn.manifold import trustworthiness
 from umap import UMAP
 
+from utils import custom_dbcv
+
 if find_spec("cuml"):
     from cuml.cluster import HDBSCAN as cuHDBSCAN  # pylint: disable=E0611, E0401
     from cuml.manifold.umap import UMAP as cuUMAP  # pylint: disable=E0611, E0401
     from cuml.cluster.hdbscan.prediction import all_points_membership_vectors
-
 
 logging.basicConfig(level=logging.INFO)
 
@@ -195,7 +195,7 @@ class Clustering:
             return -np.sum(
                 a * np.log2(a, out=np.zeros_like(a), where=(a > 0)),
                 axis=0,
-            ) / np.log2(n_samples)
+            ).mean() / np.log2(n_samples)
 
         return 1
 
@@ -214,6 +214,11 @@ class Clustering:
         :return:
         """
         if self.evaluation_method == ClusteringEvaluation.RELATIVE_VALIDITY:
+            if isinstance(self.labels, np.ndarray):
+                labels = self.labels
+            else:
+                labels = self.labels.values
+
             # Metric "cosine" is currently unsupported by cuML,
             # so we'll revert back to sklearn
             return (
@@ -224,7 +229,7 @@ class Clustering:
                     n_neighbors=n_neighbors or self.umap_params["n_neighbors"],
                     metric="cosine",
                 )
-                * (dbcv(self.embedding, self.labels) + 1)
+                * (custom_dbcv(self.hdbscan.minimum_spanning_tree_, labels) + 1)
                 / 2
             )
 

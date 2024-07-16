@@ -155,6 +155,18 @@ background: #b4d5fe; }
 a img { vertical-align: bottom; }
 
 img { }
+@media screen and (max-width: 768px) {
+svg {
+max-width: 100%;
+height: auto;
+}
+pre > code.hljs {
+font-size: 1rem;
+}
+h1 {
+text-align: initial;
+}
+}
 .sidenote, .marginnote { float: right;
 clear: right;
 margin-right: -60%;
@@ -197,9 +209,12 @@ border-radius: .35em;
 color: rgb(236, 90, 100);  
 }
 pre > code.hljs {
-overflow-wrap: break-word;
+
 background: hsl(0deg 0% 97%);
 padding: 30px
+overflow-x: auto;
+white-space: pre;
+word-wrap: normal;
 }
 h1 .code, h2 .code, h3 .code { font-size: 0.80em; }
 .marginnote .code, .sidenote .code { font-size: 1rem; }
@@ -219,6 +234,18 @@ font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
 
 
 margin: 2rem 0;
+width: 100%;
+overflow-x: auto;
+display: block;
+-webkit-overflow-scrolling: touch;
+}
+td {
+word-break: break-word;
+}
+td::after {
+content: "";
+display: inline-block;
+width: 0;
 }
 tr.even, tr.odd {
 color: rgb(144, 146, 150);
@@ -229,20 +256,14 @@ background-color: rgb(240, 247, 254);
 tr.even {
 background-color: rgb(250, 253, 255);
 }
-@media (prefers-color-scheme: dark) {
-tr.odd {
-background-color: rgb(255, 232, 219);
-}
-tr.even {
-background-color: rgb(255, 236, 226);
-}
-}
 th { 
 font-weight: normal;
 padding: 0.4em 0.8em; }
 td { padding: 0.4em 0.8em; }
 .katex > .katex-html {
-white-space: normal;
+overflow-x: auto;
+overflow-y: hidden;
+white-space: nowrap;
 }
 @media (prefers-color-scheme: dark) {
 html {
@@ -256,7 +277,22 @@ filter: invert(100%);
 background-color: rgb(18, 18, 18);
 }
 code.hljs {
-color: #8a8a8a; 
+color: #989898;  
+}
+.hljs-comment, .hljs-quote {
+color: #5e5e61 !important;
+}
+code, .code {
+color: rgb(10, 185, 205);
+}
+tr.even, tr.odd {
+color: rgb(119, 119, 119);
+}
+tr.odd {
+background-color: rgb(255, 205, 186);
+}
+tr.even {
+background-color: rgb(242, 218, 205);
 }
 }</style>
   <style type="text/css">pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}.hljs{color:#383a42;background:#fafafa}.hljs-comment,.hljs-quote{color:#a0a1a7;font-style:italic}.hljs-doctag,.hljs-formula,.hljs-keyword{color:#a626a4}.hljs-deletion,.hljs-name,.hljs-section,.hljs-selector-tag,.hljs-subst{color:#e45649}.hljs-literal{color:#0184bb}.hljs-addition,.hljs-attribute,.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#50a14f}.hljs-attr,.hljs-number,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-pseudo,.hljs-template-variable,.hljs-type,.hljs-variable{color:#986801}.hljs-bullet,.hljs-link,.hljs-meta,.hljs-selector-id,.hljs-symbol,.hljs-title{color:#4078f2}.hljs-built_in,.hljs-class .hljs-title,.hljs-title.class_{color:#c18401}.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:700}.hljs-link{text-decoration:underline}</style>
@@ -1441,7 +1477,7 @@ return je}()
 </head>
 <body>
 <div style="text-align: center">
-<h1>
+<h1 style="text-align: center">
 Wordy Rappinghood
 </h1>
 <p>
@@ -4758,7 +4794,7 @@ of Mass’) as a clustering selection method.</p>
 term to coerce our model into producing more homogenous clusters; we’ll
 use an entropy-based penalty:</p>
 <p><span class="math display">l(X, k) = 1 - T(X, X_e, k) \tilde{D}(X_e,
-C) + \alpha (1 - S(X))</span></p>
+C) + \lambda (1 - S(X))</span></p>
 <p>where</p>
 <p><span class="math display"> S(X) = - \sum_i \frac{p_i \log_2
 p_i}{\log_2 n}</span> is the normalized Shannon entropy, taken on the

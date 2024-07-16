@@ -128,6 +128,6 @@ class Experiment:
 
 
 if __name__ == "__main__":
-    e = Experiment(n_samples=1_000)
+    e = Experiment(n_samples=1_000, read_only=True)
     e.run(n_evaluations=5)
     # e.set_clusters()

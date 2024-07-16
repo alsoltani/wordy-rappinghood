@@ -129,16 +129,19 @@ class HyperparameterSearcher:
             self.history_file.parent.mkdir(parents=True, exist_ok=True)
             self.history_file.touch()
 
-            with open(self.history_file, "w") as file:
-                json.dump(
-                    {
-                        "parameters": dataclasses.asdict(self.GRID)["parameters"],
-                        "observations": [],
-                        "metadata": metadata or {},
-                    },
-                    file,
-                    indent=4,
-                )
+        with open(self.history_file, "r") as file:
+            history = json.load(file)
+
+        with open(self.history_file, "w") as file:
+            json.dump(
+                {
+                    "parameters": dataclasses.asdict(self.GRID)["parameters"],
+                    "observations": history.get("observations", []),
+                    "metadata": metadata or {},
+                },
+                file,
+                indent=4,
+            )
 
         self.optimization_problem = OptimizationProblem.from_json(self.history_file)
 
